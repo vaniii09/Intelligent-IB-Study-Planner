@@ -1,84 +1,103 @@
-import tkinter as tk
 
-# ==========================================
-# SCREEN SCALING
-# ==========================================
+# =========================================
+# StudySpace — Central Theme Configuration
+# =========================================
 
-_root = tk.Tk()
-_root.withdraw()
+# -----------------------------------------
+# Main colours
+# -----------------------------------------
 
-SCREEN_WIDTH = _root.winfo_screenwidth()
-SCREEN_HEIGHT = _root.winfo_screenheight()
+BACKGROUND = "#F7F7F5"   # Main application background
+SIDEBAR = "#F0F0ED"      # Sidebar background
+SURFACE = "#FFFFFF"      # Cards and input backgrounds
 
-_root.destroy()
+PRIMARY = "#647C68"      # Sage green accent
+ACTIVE = "#E4ECE4"       # Selected navigation item
+HOVER = "#E7E7E2"        # Hover backgrounds
 
-# Base design resolution
-BASE_WIDTH = 1920
-BASE_HEIGHT = 1080
+TEXT = "#292B28"         # Main text
+MUTED = "#85877F"        # Secondary text
+SUBTEXT = MUTED          # Compatibility with older files
 
-SCALE = min(
-    SCREEN_WIDTH / BASE_WIDTH,
-    SCREEN_HEIGHT / BASE_HEIGHT
-)
-
-# Prevent fonts becoming too small or too large
-SCALE = max(0.85, min(SCALE, 1.15))
+WHITE = "#FFFFFF"
+BORDER = "#E3E4DE"       # Subtle borders
 
 
-def fs(size):
-    return max(9, int(size * SCALE))
+# -----------------------------------------
+# Status colours
+# -----------------------------------------
+
+SUCCESS = "#6C9272"
+WARNING = "#D5A45B"
+DANGER = "#C96F6F"
 
 
-# ==========================
-# COLOURS
-# ==========================
+# -----------------------------------------
+# Subject colours
+# -----------------------------------------
 
-BACKGROUND = "#F5F7FA"
-
-CARD = "#FFFFFF"
-
-SIDEBAR = "#263238"
-
-PRIMARY = "#1976D2"
-
-SUCCESS = "#43A047"
-
-WARNING = "#FB8C00"
-
-DANGER = "#E53935"
-
-TEXT = "#263238"
-
-SUBTEXT = "#607D8B"
-
-BORDER = "#CFD8DC"
+SUBJECT_GREEN = "#E4ECE4"
+SUBJECT_BLUE = "#E4EAF5"
+SUBJECT_PURPLE = "#EAE5F3"
+SUBJECT_YELLOW = "#F4EFD9"
+SUBJECT_PINK = "#F3E4E6"
+SUBJECT_ORANGE = "#F5E8DB"
 
 
-# ==========================
-# FONTS
-# ==========================
+# -----------------------------------------
+# Typography
+# -----------------------------------------
 
-TITLE_FONT = ("Arial", fs(24), "bold")
+FONT_FAMILY = "Arial"
 
-SUBTITLE_FONT = ("Arial", fs(11))
-
-HEADING_FONT = ("Arial", fs(16), "bold")
-
-SECTION_FONT = ("Arial", fs(13), "bold")
-
-LABEL_FONT = ("Arial", fs(11), "bold")
-
-TEXT_FONT = ("Arial", fs(11))
-
-BUTTON_FONT = ("Arial", fs(10), "bold")
+FONT_SMALL = (FONT_FAMILY, 9)
+FONT_NORMAL = (FONT_FAMILY, 11)
+FONT_SUBHEADING = (FONT_FAMILY, 14, "bold")
+FONT_HEADING = (FONT_FAMILY, 22, "bold")
+FONT_TITLE = (FONT_FAMILY, 28, "bold")
 
 
-# ==========================
-# SIZES
-# ==========================
+# -----------------------------------------
+# Compatibility with older files
+# -----------------------------------------
+# These aliases prevent NameError exceptions
+# in modules that still use the original names.
 
-ENTRY_WIDTH = int(35 * SCALE)
 
-BUTTON_WIDTH = int(16 * SCALE)
+# Colours
+CARD = SURFACE
 
-COMBO_WIDTH = int(33 * SCALE)
+# Text colours
+SUBTEXT = MUTED
+
+
+# Font aliases
+TITLE_FONT = FONT_TITLE
+SUBTITLE_FONT = FONT_NORMAL
+SECTION_FONT = FONT_SUBHEADING
+LABEL_FONT = FONT_NORMAL
+TEXT_FONT = FONT_NORMAL
+
+
+# -----------------------------------------
+# Optional legacy aliases
+# -----------------------------------------
+
+# Some older UI components may use these.
+# They preserve the new theme's appearance.
+
+TITLE = TEXT
+ACCENT = PRIMARY
+SECONDARY = MUTED
+LIGHT_BG = BACKGROUND
+CARD_BG = SURFACE
+BORDER_COLOR = BORDER
+# =========================================
+# UI dimensions and typography
+# =========================================
+
+ENTRY_WIDTH = 35
+COMBO_WIDTH = 35
+BUTTON_WIDTH = 15
+
+BUTTON_FONT = (FONT_FAMILY, 10, "bold")

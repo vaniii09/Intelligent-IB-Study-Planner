@@ -1,293 +1,555 @@
-import tkinter as tk
 
+import tkinter as tk
 from datetime import datetime
+
 from database.database import (
     load_subjects,
     load_availability,
     get_dashboard_statistics,
     load_tasks
 )
+
 from logic import get_priority_label
+from theme import *
 
 
-# --------------------------------------------------
-# Small Dashboard Card
-# --------------------------------------------------
+# =========================================================
+# Dashboard Helpers
+# =========================================================
 
-def create_stat_card(parent, title, value):
+def create_stat_card(parent, title, value, accent):
 
     card = tk.Frame(
         parent,
-        bg="#F8F9FA",
-        bd=1,
-        relief="solid",
-        padx=20,
-        pady=15
+        bg=SURFACE,
+        highlightbackground=BORDER,
+        highlightthickness=1
+    )
+
+    tk.Frame(
+        card,
+        bg=accent,
+        height=4
+    ).pack(fill="x")
+
+    body = tk.Frame(
+        card,
+        bg=SURFACE
+    )
+
+    body.pack(
+        fill="both",
+        expand=True,
+        padx=16,
+        pady=14
     )
 
     tk.Label(
-        card,
+        body,
         text=title,
-        font=("Arial", 11),
-        bg="#F8F9FA",
-        fg="#555555"
-    ).pack()
+        font=("Arial", 10),
+        bg=SURFACE,
+        fg=MUTED
+    ).pack(anchor="w")
 
     tk.Label(
-        card,
+        body,
         text=str(value),
-        font=("Arial", 22, "bold"),
-        bg="#F8F9FA"
-    ).pack(pady=5)
+        font=("Arial", 25, "bold"),
+        bg=SURFACE,
+        fg=TEXT
+    ).pack(
+        anchor="w",
+        pady=(7, 0)
+    )
 
     return card
 
 
-# --------------------------------------------------
+def create_section(parent, title, subtitle=None):
+
+    section = tk.Frame(
+        parent,
+        bg=SURFACE,
+        highlightbackground=BORDER,
+        highlightthickness=1
+    )
+
+    header = tk.Frame(
+        section,
+        bg=SURFACE
+    )
+
+    header.pack(
+        fill="x",
+        padx=20,
+        pady=(18, 12)
+    )
+
+    tk.Label(
+        header,
+        text=title,
+        font=("Arial", 14, "bold"),
+        bg=SURFACE,
+        fg=TEXT
+    ).pack(anchor="w")
+
+    if subtitle:
+
+        tk.Label(
+            header,
+            text=subtitle,
+            font=("Arial", 9),
+            bg=SURFACE,
+            fg=MUTED
+        ).pack(
+            anchor="w",
+            pady=(5, 0)
+        )
+
+    return section
+
+
+def parse_deadline(deadline_text):
+
+    if not deadline_text:
+        return None
+
+    try:
+        return datetime.strptime(
+            str(deadline_text),
+            "%Y-%m-%d"
+        ).date()
+
+    except (ValueError, TypeError):
+        return None
+
+
+# =========================================================
 # Dashboard
-# --------------------------------------------------
+# =========================================================
 
 def show_dashboard(parent, app):
 
+    # -----------------------------------------------------
+    # Main Page
+    # -----------------------------------------------------
+
     frame = tk.Frame(
         parent,
-        bg="white"
+        bg=BACKGROUND
     )
 
-    subjects = load_subjects()
-    availability = load_availability()
+    # -----------------------------------------------------
+    # Scrollable Dashboard
+    # -----------------------------------------------------
+
+    canvas = tk.Canvas(
+        frame,
+        bg=BACKGROUND,
+        highlightthickness=0
+    )
+
+    scrollbar = tk.Scrollbar(
+        frame,
+        orient="vertical",
+        command=canvas.yview
+    )
+
+    canvas.configure(
+        yscrollcommand=scrollbar.set
+    )
+
+    scrollbar.pack(
+        side="right",
+        fill="y"
+    )
+
+    canvas.pack(
+        side="left",
+        fill="both",
+        expand=True
+    )
+
+    content = tk.Frame(
+        canvas,
+        bg=BACKGROUND
+    )
+
+    canvas_window = canvas.create_window(
+        (0, 0),
+        window=content,
+        anchor="nw"
+    )
+
+    def update_scroll_region(event=None):
+
+        canvas.configure(
+            scrollregion=canvas.bbox("all")
+        )
+
+    def resize_content(event):
+
+        canvas.itemconfigure(
+            canvas_window,
+            width=event.width
+        )
+
+    content.bind(
+        "<Configure>",
+        update_scroll_region
+    )
+
+    canvas.bind(
+        "<Configure>",
+        resize_content
+    )
+
+    # -----------------------------------------------------
+    # Load Data
+    # -----------------------------------------------------
+
     tasks = load_tasks()
 
     (
         total_tasks,
         completed_tasks,
-        pending_tasks,
+        pending_count,
         highest_priority,
         progress
     ) = get_dashboard_statistics()
 
-    # =====================================
-    # TITLE
-    # =====================================
+    today = datetime.today().date()
 
-    tk.Label(
-        frame,
-        text="Dashboard",
-        font=("Arial", 26, "bold"),
-        bg="white"
-    ).pack(
-        pady=(20, 5)
-    )
-
-    tk.Label(
-        frame,
-        text="Welcome back! Here's your study overview.",
-        font=("Arial", 12),
-        bg="white",
-        fg="gray"
-    ).pack(
-        pady=(0, 25)
-    )
-
-    # =====================================
-    # STATISTICS CARDS
-    # =====================================
-
-    cards = tk.Frame(
-        frame,
-        bg="white"
-    )
-
-    cards.pack()
-
-    create_stat_card(
-        cards,
-        "📋 Total Tasks",
-        total_tasks
-    ).grid(row=0, column=0, padx=12)
-
-    create_stat_card(
-        cards,
-        "⏳ Pending",
-        pending_tasks
-    ).grid(row=0, column=1, padx=12)
-
-    create_stat_card(
-        cards,
-        "✅ Completed",
-        completed_tasks
-    ).grid(row=0, column=2, padx=12)
-
-    urgent_count = 0
-
-    for task in tasks:
-
-        if task[7] == 0:
-
-            if task[6] is not None and task[6] >= 8:
-
-                urgent_count += 1
-
-    create_stat_card(
-        cards,
-        "🔥 Urgent",
-        urgent_count
-    ).grid(row=0, column=3, padx=12)
-
-    # =====================================
-    # PROGRESS
-    # =====================================
-
-    progress_frame = tk.LabelFrame(
-        frame,
-        text="📈 Overall Progress",
-        bg="white",
-        padx=15,
-        pady=10,
-        font=("Arial", 12, "bold")
-    )
-
-    progress_frame.pack(
-        fill="x",
-        padx=20,
-        pady=15
-    )
-
-    progress_bar = tk.Canvas(
-        progress_frame,
-        width=500,
-        height=25,
-        bg="white",
-        highlightthickness=0
-    )
-
-    progress_bar.pack(pady=10)
-
-    progress_bar.create_rectangle(
-        0,
-        0,
-        500,
-        25,
-        fill="#E0E0E0",
-        outline=""
-    )
-
-    filled = (progress / 100) * 500
-
-    progress_bar.create_rectangle(
-        0,
-        0,
-        filled,
-        25,
-        fill="#4CAF50",
-        outline=""
-    )
-
-    tk.Label(
-        progress_frame,
-        text=f"{progress:.0f}% Complete ({completed_tasks}/{total_tasks} tasks)",
-        bg="white",
-        font=("Arial", 11)
-    ).pack()
-
-    # =====================================
-    # TODAY'S FOCUS
-    # =====================================
-
-    focus = tk.LabelFrame(
-        frame,
-        text="🎯 Today's Focus",
-        bg="white",
-        padx=20,
-        pady=15,
-        font=("Arial", 12, "bold")
-    )
-
-    focus.pack(
-        fill="x",
-        padx=20,
-        pady=15
-    )
-
-    # -------------------------------------------------
-    # Get pending tasks
-    # -------------------------------------------------
-
-    pending_tasks = [
+    # Only incomplete tasks
+    pending_list = [
         task for task in tasks
         if task[7] == 0
     ]
 
-    # -------------------------------------------------
-    # Calculate how urgent each task is
-    # -------------------------------------------------
+    # -----------------------------------------------------
+    # Header
+    # -----------------------------------------------------
 
-    today = datetime.today().date()
+    header = tk.Frame(
+        content,
+        bg=BACKGROUND
+    )
 
+    header.pack(
+        fill="x",
+        padx=32,
+        pady=(30, 22)
+    )
+
+    greeting = tk.Frame(
+        header,
+        bg=BACKGROUND
+    )
+
+    greeting.pack(
+        side="left",
+        fill="x",
+        expand=True
+    )
+
+    tk.Label(
+        greeting,
+        text="Your workspace",
+        font=("Arial", 10, "bold"),
+        bg=BACKGROUND,
+        fg=PRIMARY
+    ).pack(anchor="w")
+
+    tk.Label(
+        greeting,
+        text="Good to see you!",
+        font=("Arial", 27, "bold"),
+        bg=BACKGROUND,
+        fg=TEXT
+    ).pack(
+        anchor="w",
+        pady=(5, 4)
+    )
+
+    tk.Label(
+        greeting,
+        text="A little progress every day adds up.",
+        font=("Arial", 11),
+        bg=BACKGROUND,
+        fg=MUTED
+    ).pack(anchor="w")
+
+    date_frame = tk.Frame(
+        header,
+        bg=SURFACE,
+        highlightbackground=BORDER,
+        highlightthickness=1
+    )
+
+    date_frame.pack(
+        side="right",
+        anchor="center",
+        padx=(12, 0)
+    )
+
+    tk.Label(
+        date_frame,
+        text=today.strftime("%A"),
+        font=("Arial", 10),
+        bg=SURFACE,
+        fg=MUTED
+    ).pack(
+        padx=18,
+        pady=(12, 2)
+    )
+
+    tk.Label(
+        date_frame,
+        text=today.strftime("%d %b %Y"),
+        font=("Arial", 13, "bold"),
+        bg=SURFACE,
+        fg=TEXT
+    ).pack(
+        padx=18,
+        pady=(0, 12)
+    )
+
+    # -----------------------------------------------------
+    # Statistics
+    # -----------------------------------------------------
+
+    tk.Label(
+        content,
+        text="YOUR OVERVIEW",
+        font=("Arial", 9, "bold"),
+        bg=BACKGROUND,
+        fg=MUTED
+    ).pack(
+        anchor="w",
+        padx=32,
+        pady=(0, 12)
+    )
+
+    stats = tk.Frame(
+        content,
+        bg=BACKGROUND
+    )
+
+    stats.pack(
+        fill="x",
+        padx=32
+    )
+
+    stat_data = [
+        ("Total tasks", total_tasks, PRIMARY),
+        ("Pending", pending_count, "#C69A51"),
+        ("Completed", completed_tasks, "#739B79"),
+        ("High priority", sum(
+            1 for task in pending_list
+            if task[6] is not None and task[6] >= 8
+        ), "#C77979")
+    ]
+
+    for column in range(4):
+        stats.grid_columnconfigure(
+            column,
+            weight=1,
+            uniform="stats"
+        )
+
+    for column, (title, value, accent) in enumerate(stat_data):
+
+        card = create_stat_card(
+            stats,
+            title,
+            value,
+            accent
+        )
+
+        card.grid(
+            row=0,
+            column=column,
+            sticky="nsew",
+            padx=(0 if column == 0 else 6, 6 if column < 3 else 0)
+        )
+
+    # -----------------------------------------------------
+    # Progress Card
+    # -----------------------------------------------------
+
+    progress_section = create_section(
+        content,
+        "Overall progress",
+        "Keep showing up. Every completed task counts."
+    )
+
+    progress_section.pack(
+        fill="x",
+        padx=32,
+        pady=(22, 0)
+    )
+
+    progress_body = tk.Frame(
+        progress_section,
+        bg=SURFACE
+    )
+
+    progress_body.pack(
+        fill="x",
+        padx=20,
+        pady=(0, 20)
+    )
+
+    progress_top = tk.Frame(
+        progress_body,
+        bg=SURFACE
+    )
+
+    progress_top.pack(fill="x")
+
+    safe_progress = max(
+        0,
+        min(100, float(progress or 0))
+    )
+
+    tk.Label(
+        progress_top,
+        text=f"{safe_progress:.0f}% completed",
+        font=("Arial", 16, "bold"),
+        bg=SURFACE,
+        fg=PRIMARY
+    ).pack(side="left")
+
+    tk.Label(
+        progress_top,
+        text=f"{completed_tasks} of {total_tasks} tasks",
+        font=("Arial", 10),
+        bg=SURFACE,
+        fg=MUTED
+    ).pack(side="right")
+
+    progress_bar = tk.Canvas(
+        progress_body,
+        height=10,
+        bg="#EAECE7",
+        highlightthickness=0
+    )
+
+    progress_bar.pack(
+        fill="x",
+        pady=(13, 0)
+    )
+
+    def draw_progress(event=None):
+
+        progress_bar.delete("all")
+
+        width = progress_bar.winfo_width()
+        height = progress_bar.winfo_height()
+
+        if width <= 1:
+            return
+
+        progress_bar.create_rectangle(
+            0,
+            0,
+            width,
+            height,
+            fill="#EAECE7",
+            outline=""
+        )
+
+        progress_bar.create_rectangle(
+            0,
+            0,
+            width * safe_progress / 100,
+            height,
+            fill=PRIMARY,
+            outline=""
+        )
+
+    progress_bar.bind(
+        "<Configure>",
+        draw_progress
+    )
+
+    # -----------------------------------------------------
+    # Main Content Columns
+    # -----------------------------------------------------
+
+    columns = tk.Frame(
+        content,
+        bg=BACKGROUND
+    )
+
+    columns.pack(
+        fill="both",
+        expand=True,
+        padx=32,
+        pady=(22, 30)
+    )
+
+    columns.grid_columnconfigure(
+        0,
+        weight=3,
+        uniform="dashboard"
+    )
+
+    columns.grid_columnconfigure(
+        1,
+        weight=2,
+        uniform="dashboard"
+    )
+
+    # -----------------------------------------------------
+    # Today's Focus
+    # -----------------------------------------------------
+
+    focus = create_section(
+        columns,
+        "Today's focus",
+        "Your most important tasks, prioritised by deadline."
+    )
+
+    focus.grid(
+        row=0,
+        column=0,
+        sticky="nsew",
+        padx=(0, 8)
+    )
 
     def focus_sort_key(task):
 
-        deadline_text = task[4]
+        deadline = parse_deadline(task[4])
 
-        try:
-            deadline = datetime.strptime(
-                deadline_text,
-                "%Y-%m-%d"
-            ).date()
-
+        if deadline is None:
+            deadline_group = 5
+        else:
             days_left = (deadline - today).days
 
-        except ValueError:
+            if days_left < 0:
+                deadline_group = 0
+            elif days_left == 0:
+                deadline_group = 1
+            elif days_left == 1:
+                deadline_group = 2
+            elif days_left <= 3:
+                deadline_group = 3
+            else:
+                deadline_group = 4
 
-            # Invalid deadline goes to the bottom
-            days_left = 9999
+        priority = task[6] if task[6] is not None else 0
 
-        priority = (
-            task[6]
-            if task[6] is not None
-            else 0
-        )
+        return deadline_group, -priority
 
-        # ---------------------------------------------
-        # Deadline has the strongest influence
-        # ---------------------------------------------
-
-        if days_left < 0:
-            deadline_group = 0       # Overdue
-
-        elif days_left == 0:
-            deadline_group = 1       # Today
-
-        elif days_left == 1:
-            deadline_group = 2       # Tomorrow
-
-        elif days_left <= 3:
-            deadline_group = 3       # Within 3 days
-
-        else:
-            deadline_group = 4       # Later
-
-        return (
-            deadline_group,
-            -priority
-        )
-
-
-    # -------------------------------------------------
-    # Sort Today's Focus
-    # -------------------------------------------------
-
-    pending_tasks.sort(
+    pending_list.sort(
         key=focus_sort_key
     )
 
-    # -------------------------------------------------
-    # Display top 3 priority tasks
-    # -------------------------------------------------
+    if pending_list:
 
-    if pending_tasks:
-
-        for task in pending_tasks[:3]:
+        for task in pending_list[:3]:
 
             (
                 task_id,
@@ -300,132 +562,303 @@ def show_dashboard(parent, app):
                 completed
             ) = task[:8]
 
-            # -----------------------------
-            # Task container
-            # -----------------------------
-
-            task_frame = tk.Frame(
+            item = tk.Frame(
                 focus,
-                bg="white"
+                bg=SURFACE
             )
 
-            task_frame.pack(
+            item.pack(
                 fill="x",
-                pady=8
+                padx=20,
+                pady=(4, 12)
             )
 
-            # -----------------------------
-            # Task title
-            # -----------------------------
+            tk.Frame(
+                item,
+                bg=BORDER,
+                height=1
+            ).pack(
+                fill="x",
+                pady=(0, 12)
+            )
+
+            title_row = tk.Frame(
+                item,
+                bg=SURFACE
+            )
+
+            title_row.pack(fill="x")
 
             tk.Label(
-                task_frame,
+                title_row,
                 text=title,
-                font=("Arial", 14, "bold"),
-                bg="white"
+                font=("Arial", 11, "bold"),
+                bg=SURFACE,
+                fg=TEXT,
+                wraplength=330,
+                justify="left"
             ).pack(
+                side="left",
+                fill="x",
+                expand=True,
                 anchor="w"
             )
 
-            # -----------------------------
-            # Task information
-            # -----------------------------
+            tk.Label(
+                title_row,
+                text=get_priority_label(priority),
+                font=("Arial", 9, "bold"),
+                bg=SUBJECT_YELLOW,
+                fg=TEXT
+            ).pack(
+                side="right",
+                padx=(8, 0)
+            )
+
+            deadline_date = parse_deadline(deadline)
+
+            if deadline_date is None:
+                deadline_label = f"Due: {deadline or 'No deadline'}"
+            else:
+                days_left = (deadline_date - today).days
+
+                if days_left < 0:
+                    deadline_label = f"Overdue by {abs(days_left)} day(s)"
+                elif days_left == 0:
+                    deadline_label = "Due today"
+                elif days_left == 1:
+                    deadline_label = "Due tomorrow"
+                else:
+                    deadline_label = deadline_date.strftime("%d %b %Y")
 
             tk.Label(
-                task_frame,
-                text=(
-                    f"📚 {subject}    "
-                    f"📅 Due: {deadline}    "
-                    f"⏱ {hours} hour(s)"
-                ),
-                font=("Arial", 10),
-                bg="white",
-                fg="gray"
+                item,
+                text=f"{subject}  ·  {deadline_label}  ·  {hours} hour(s)",
+                font=("Arial", 9),
+                bg=SURFACE,
+                fg=MUTED,
+                wraplength=360,
+                justify="left"
+            ).pack(
+                anchor="w",
+                pady=(7, 10)
+            )
+
+            tk.Button(
+                item,
+                text="Start studying  →",
+                command=lambda task_id=task_id: app.study_session(task_id),
+                font=("Arial", 9, "bold"),
+                bg=ACTIVE,
+                fg=PRIMARY,
+                activebackground=HOVER,
+                activeforeground=PRIMARY,
+                relief="flat",
+                bd=0,
+                padx=12,
+                pady=7,
+                cursor="hand2"
+            ).pack(anchor="w")
+
+    else:
+
+        empty = tk.Frame(
+            focus,
+            bg=SURFACE
+        )
+
+        empty.pack(
+            fill="x",
+            padx=20,
+            pady=20
+        )
+
+        tk.Label(
+            empty,
+            text="You're all caught up!",
+            font=("Arial", 13, "bold"),
+            bg=SURFACE,
+            fg=PRIMARY
+        ).pack(anchor="w")
+
+        tk.Label(
+            empty,
+            text="Add a task whenever you're ready for your next goal.",
+            font=("Arial", 10),
+            bg=SURFACE,
+            fg=MUTED,
+            wraplength=300,
+            justify="left"
+        ).pack(
+            anchor="w",
+            pady=(7, 12)
+        )
+
+        tk.Button(
+            empty,
+            text="+ Add a task",
+            command=app.add_task,
+            font=("Arial", 10, "bold"),
+            bg=ACTIVE,
+            fg=PRIMARY,
+            relief="flat",
+            bd=0,
+            padx=12,
+            pady=8,
+            cursor="hand2"
+        ).pack(anchor="w")
+
+    # -----------------------------------------------------
+    # Upcoming Tasks
+    # -----------------------------------------------------
+
+    upcoming = create_section(
+        columns,
+        "Upcoming tasks",
+        "A quick look at what's on your plate."
+    )
+
+    upcoming.grid(
+        row=0,
+        column=1,
+        sticky="nsew",
+        padx=(8, 0)
+    )
+
+    # Show incomplete tasks with the nearest deadlines first.
+    # Tasks without valid deadlines appear after dated tasks.
+
+    upcoming_tasks = sorted(
+        pending_list,
+        key=focus_sort_key
+    )
+
+    if upcoming_tasks:
+
+        for task in upcoming_tasks[:5]:
+
+            title = task[1]
+            subject = task[2]
+            deadline = task[4]
+
+            item = tk.Frame(
+                upcoming,
+                bg=SURFACE
+            )
+
+            item.pack(
+                fill="x",
+                padx=20,
+                pady=(2, 10)
+            )
+
+            row = tk.Frame(
+                item,
+                bg=SURFACE
+            )
+
+            row.pack(fill="x")
+
+            tk.Label(
+                row,
+                text="○",
+                font=("Arial", 15),
+                bg=SURFACE,
+                fg=PRIMARY
+            ).pack(
+                side="left",
+                padx=(0, 10)
+            )
+
+            details = tk.Frame(
+                row,
+                bg=SURFACE
+            )
+
+            details.pack(
+                side="left",
+                fill="x",
+                expand=True
+            )
+
+            tk.Label(
+                details,
+                text=title,
+                font=("Arial", 10, "bold"),
+                bg=SURFACE,
+                fg=TEXT,
+                wraplength=220,
+                justify="left"
+            ).pack(anchor="w")
+
+            tk.Label(
+                details,
+                text=f"{subject}  ·  {deadline or 'No deadline'}",
+                font=("Arial", 9),
+                bg=SURFACE,
+                fg=MUTED,
+                wraplength=220,
+                justify="left"
             ).pack(
                 anchor="w",
                 pady=(3, 0)
             )
 
-            # -----------------------------
-            # Priority
-            # -----------------------------
-
-            tk.Label(
-                task_frame,
-                text=get_priority_label(priority),
-                font=("Arial", 10, "bold"),
-                bg="white",
-                fg="#E65100"
+            tk.Frame(
+                item,
+                bg=BORDER,
+                height=1
             ).pack(
-                anchor="w",
-                pady=(3, 3)
+                fill="x",
+                pady=(10, 0)
             )
 
-            # -----------------------------
-            # Start Studying
-            # -----------------------------
-
-            tk.Button(
-                task_frame,
-                text="▶ Start Studying",
-                bg="#2E7D32",
-                fg="white",
-                font=("Arial", 10, "bold"),
-                padx=12,
-                pady=5,
-                command=lambda id=task_id: app.study_session(id)
-            ).pack(
-                anchor="w",
-                pady=(2, 5)
-            )
+        tk.Button(
+            upcoming,
+            text="View all tasks  →",
+            command=app.view_tasks,
+            font=("Arial", 10, "bold"),
+            bg=SURFACE,
+            fg=PRIMARY,
+            activebackground=ACTIVE,
+            activeforeground=PRIMARY,
+            relief="flat",
+            bd=0,
+            cursor="hand2"
+        ).pack(
+            anchor="w",
+            padx=20,
+            pady=(5, 18)
+        )
 
     else:
-
-        tk.Label(
-            focus,
-            text="You're all caught up! 🎉",
-            font=("Arial", 12),
-            bg="white"
-        ).pack(
-            anchor="w"
-        ) 
-    # =====================================
-    # UPCOMING TASKS
-    # =====================================
-
-    upcoming = tk.LabelFrame(
-        frame,
-        text="📅 Upcoming Tasks",
-        bg="white",
-        padx=15,
-        pady=10,
-        font=("Arial", 12, "bold")
-    )
-
-    upcoming.pack(
-        fill="x",
-        padx=20,
-        pady=10
-    )
-
-    if len(tasks) == 0:
 
         tk.Label(
             upcoming,
-            text="No tasks yet.",
-            bg="white"
-        ).pack(anchor="w")
+            text="No pending tasks yet.",
+            font=("Arial", 11),
+            bg=SURFACE,
+            fg=MUTED
+        ).pack(
+            anchor="w",
+            padx=20,
+            pady=(5, 20)
+        )
 
-    else:
+    # -----------------------------------------------------
+    # Mouse Wheel Scrolling
+    # -----------------------------------------------------
 
-        for task in tasks[:5]:
+    def on_mousewheel(event):
 
-            tk.Label(
-                upcoming,
-                text=f"• {task[1]} ({task[4]})",
-                bg="white",
-                font=("Arial", 11)
-            ).pack(anchor="w")
+        canvas.yview_scroll(
+            int(-1 * (event.delta / 120)),
+            "units"
+        )
 
+    canvas.bind(
+        "<MouseWheel>",
+        on_mousewheel
+    )
 
     return frame
